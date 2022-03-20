@@ -1,0 +1,16 @@
+[package]
+name = "re_flog"
+version = "0.1.0"
+edition = "2018"
+authors = ["Mark Chaitin"]
+description = "A janky version of git so I can learn"
+
+[dependencies]
+flate2 = "1.0.22"
+chrono = "0.4.19"
+clap = { version = "3.1.0", features = ["cargo", "derive"] }
+log = "0.4.14"
+flexi_logger = "0.22.3"
+sha-1 = "0.10.0"
+derive-getters = "0.2.0"
+hex = "0.4.3"
