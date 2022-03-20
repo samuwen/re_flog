@@ -148,7 +148,6 @@ impl Commit {
     }
 
     pub fn print_recursive(&self) {
-        debug!("{:?}", self);
         println!("commit {}", self.sha);
         println!("Author:\t{}", self.author.to_string_without_date());
         println!("Date:\t{}\n", self.author.to_string_date());

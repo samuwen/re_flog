@@ -1,9 +1,12 @@
 use std::{
     fmt,
+    fs::read_dir,
     path::{Path, PathBuf},
 };
 
 use sha1::{Digest, Sha1};
+
+use crate::exit_with_message;
 
 #[derive(Clone, PartialEq)]
 pub struct Sha {
@@ -38,8 +41,34 @@ impl Sha {
     }
 
     pub fn new_from_str(s: &str) -> Self {
+        if s.len() < 4 {
+            let msg = format!(
+                "fatal: ambiguous argument '{}': unknown revision or path not in the working tree.",
+                s
+            );
+            exit_with_message(&msg);
+        }
+        let mut full_str = s.to_string();
+        if s.len() < 20 {
+            let mut string = s.to_string();
+            let first_two_chars: String = string.drain(..2).collect();
+            let path_string = format!(".re_flogged/objects/{}", first_two_chars);
+            let path = Path::new(&path_string);
+            if path.exists() {
+                for dir_entry in read_dir(path) {
+                    for entry in dir_entry {
+                        let entry = entry.unwrap();
+                        let file_name = entry.file_name().into_string().unwrap();
+                        if file_name.contains(&string) {
+                            let full = format!("{}{}", first_two_chars, file_name);
+                            full_str = full;
+                        }
+                    }
+                }
+            }
+        }
         let mut out = [0; 20];
-        hex::decode_to_slice(s, &mut out).expect("Failed to decode hex");
+        hex::decode_to_slice(full_str, &mut out).expect("Failed to decode hex");
         Self { bytes: out }
     }
 
