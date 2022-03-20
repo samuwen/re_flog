@@ -38,7 +38,10 @@ enum Command {
     Init {
         destination: Option<String>,
     },
-    Log {},
+    Log {
+        #[clap(arg_enum, long = "pretty")]
+        pretty: Option<LogFormat>,
+    },
     LsFiles {
         #[clap(long)]
         stage: bool,
@@ -120,8 +123,8 @@ pub fn parse_args() -> Result<(), std::io::Error> {
             };
             init(root_dir)?;
         }
-        Command::Log {} => {
-            basic_log()?;
+        Command::Log { pretty } => {
+            log(pretty)?;
         }
         Command::LsFiles { stage } => {
             if *stage {

@@ -8,7 +8,7 @@ use log::{debug, info};
 
 use crate::exit_with_message;
 
-use super::{check_file_is_of_kind, load_commit_from_sha, read_from_disk, GitObject, Sha};
+use super::{check_file_is_of_kind, load_commit_from_sha, Printer, Sha};
 
 #[derive(Clone, Debug)]
 pub struct RefFile {
@@ -52,8 +52,8 @@ impl RefFile {
         Ok(())
     }
 
-    pub fn pretty_print(&self) {
+    pub fn pretty_print(&self, printer: &dyn Printer) {
         let head = load_commit_from_sha(&self.sha).unwrap();
-        head.print_recursive();
+        head.print_recursive(printer);
     }
 }

@@ -3,15 +3,41 @@ use std::{
     io::{self, BufRead, BufReader},
 };
 
+use clap::ArgEnum;
 use log::debug;
 
-use crate::{exit_with_message, structures::RefFile};
+use crate::{
+    exit_with_message,
+    structures::{MediumPrinter, OneLinePrinter, Printer, RefFile, ShortPrinter},
+};
 
-pub fn basic_log() -> Result<(), io::Error> {
+#[derive(Clone, Debug, ArgEnum)]
+pub enum LogFormat {
+    Oneline,
+    Short,
+    Medium,
+    Full,
+    Fuller,
+    Reference,
+    Email,
+    Raw,
+    Format,  // takes a string
+    TFormat, // takes a string
+}
+
+pub fn log(print_options: &Option<LogFormat>) -> Result<(), io::Error> {
     let current_branch = get_current_branch()?;
     let ref_file = RefFile::new_from_branch(&current_branch)?;
     debug!("{:?}", ref_file);
-    ref_file.pretty_print();
+    let printer: &dyn Printer = match print_options {
+        Some(format) => match format {
+            &LogFormat::Oneline => &OneLinePrinter {},
+            &LogFormat::Short => &ShortPrinter {},
+            _ => &MediumPrinter {},
+        },
+        None => &MediumPrinter {},
+    };
+    ref_file.pretty_print(printer);
     Ok(())
 }
 

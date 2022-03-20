@@ -13,6 +13,7 @@ use crate::{
     utils::iterable_to_string,
 };
 
+use super::commit_printer::Printer;
 use super::{GitObject, Sha};
 
 #[derive(Clone, Debug, Getters)]
@@ -147,14 +148,11 @@ impl Commit {
         }
     }
 
-    pub fn print_recursive(&self) {
-        println!("commit {}", self.sha);
-        println!("Author:\t{}", self.author.to_string_without_date());
-        println!("Date:\t{}\n", self.author.to_string_date());
-        println!("    {}", self.message);
+    pub fn print_recursive(&self, printer: &dyn Printer) {
+        printer.print_commit(self);
         if let Some(sha) = &self.parent {
             let next = load_commit_from_sha(sha).unwrap();
-            next.print_recursive();
+            next.print_recursive(printer);
         }
     }
 
