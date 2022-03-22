@@ -25,8 +25,10 @@ enum Command {
     },
     CommitTree {
         sha: String,
+        #[clap(short = 'm')]
+        message: Option<Vec<String>>,
         #[clap(short = 'p')]
-        parent: Option<String>,
+        parent: Option<Vec<String>>,
     },
     HashObject {
         /// The file to hash
@@ -107,8 +109,12 @@ pub fn parse_args() -> Result<(), std::io::Error> {
                 cat_file_print_type(sha)?;
             }
         }
-        Command::CommitTree { sha, parent } => {
-            commit_tree(sha, parent)?;
+        Command::CommitTree {
+            sha,
+            message,
+            parent,
+        } => {
+            commit_tree(sha, message, parent)?;
         }
         Command::HashObject { file, write } => {
             if *write {

@@ -13,3 +13,13 @@ where
         acc
     })
 }
+
+pub fn iterable_to_string_no_truncate<'a, I>(data: &mut I) -> String
+where
+    I: Iterator<Item = &'a u8>,
+{
+    data.fold(String::new(), |mut acc, &cur| {
+        acc.push(cur as char);
+        acc
+    })
+}

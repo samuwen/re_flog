@@ -10,7 +10,7 @@ use log::{debug, info};
 use crate::{
     exit_with_message,
     structures::{compress, load_commit_from_sha},
-    utils::iterable_to_string,
+    utils::iterable_to_string_no_truncate,
 };
 
 use super::commit_printer::Printer;
@@ -52,10 +52,10 @@ impl Author {
 
 #[derive(Clone, Debug, Getters)]
 pub struct Commit {
-    message: String,
+    message: Vec<String>,
     author: Author,
     committer: Author,
-    parent: Option<Sha>,
+    parent: Option<Vec<Sha>>,
     sha: Sha,
     tree_sha: Sha,
 }
@@ -66,33 +66,39 @@ impl Commit {
         count: usize,
         sha: &Sha,
     ) -> Result<Self, io::Error> {
+        // tree b708e1ba3e49f514ef252db6cc8733dca2b7471d
+        // parent 406b00943149ced320d43c489e6bca6ef423f8b4
+        // author Mark Chaitin <markchaitin@gmail.com> 1647742703 -0700
+        // committer Mark Chaitin <markchaitin@gmail.com> 1647742703 -0700
+        // added a second file
         info!("Reading commit from disk. Total size: {} bytes", count);
-        let msg = format!("Invalid sha: {}", sha);
         let mut total = 0;
         let mut commit = Commit::empty();
-        let (name, data) = Commit::read_file_line(reader, &msg, &mut total)?;
-        commit.add_field(name, data);
-        let (name, data) = Commit::read_file_line(reader, &msg, &mut total)?;
-        commit.add_field(name, data);
-        let (name, data) = Commit::read_file_line(reader, &msg, &mut total)?;
-        commit.add_field(name, data);
-        if commit.parent.is_some() {
-            // need one more read
-            let (name, data) = Commit::read_file_line(reader, &msg, &mut total)?;
+        while let Some((name, data)) = Commit::read_file_line(reader, &mut total) {
             commit.add_field(name, data);
         }
         debug!("total read: {} vs total in file: {}", total, count);
-        let mut message = String::new();
-        reader.read_line(&mut message)?;
+        let message = Commit::read_messages(reader, &mut total)?;
         commit.message = message;
         commit.sha = sha.clone();
         Ok(commit)
     }
 
-    pub fn new_from_tree_sha(tree_sha: Sha, parent: &Option<String>) -> Result<Self, io::Error> {
-        let mut message = String::new();
-        let stdin = stdin();
-        stdin.read_line(&mut message)?;
+    pub fn new_from_tree_sha(
+        tree_sha: Sha,
+        message: &Option<Vec<String>>,
+        parent: &Option<Vec<String>>,
+    ) -> Result<Self, io::Error> {
+        let message = match message {
+            Some(msg) => msg.clone(),
+            None => {
+                let mut message = String::new();
+                let stdin = stdin();
+                stdin.read_line(&mut message)?;
+                vec![message]
+            }
+        };
+        debug!("{:?}", message);
         let dt = Local::now();
         let author = Author::new(
             String::from("Mark Chaitin"),
@@ -108,8 +114,11 @@ impl Commit {
             sha: Sha::empty(),
             tree_sha,
         };
-        if let Some(parent) = parent {
-            me.parent = Some(Sha::new_from_str(parent));
+        if let Some(parents) = parent {
+            me.parent = parents
+                .iter()
+                .map(|parent| Some(Sha::new_from_str(parent)))
+                .collect();
         };
         me.hash()?;
         me.pretty_print();
@@ -121,9 +130,11 @@ impl Commit {
         let mut bytes = vec![];
         bytes.write(b"tree ")?;
         bytes.write(self.tree_sha.buf())?;
-        if let Some(p_sha) = &self.parent {
-            bytes.write(b"\nparent ")?;
-            bytes.write(p_sha.buf())?;
+        if let Some(parents) = &self.parent {
+            for parent in parents.iter() {
+                bytes.write(b"\nparent ")?;
+                bytes.write(parent.buf())?;
+            }
         }
         let author_string = format!("\nauthor {}", self.author.to_string_with_date());
         bytes.write(author_string.as_bytes())?;
@@ -139,7 +150,7 @@ impl Commit {
 
     pub fn empty() -> Self {
         Self {
-            message: String::new(),
+            message: vec![],
             author: Author::empty(),
             committer: Author::empty(),
             parent: None,
@@ -150,9 +161,11 @@ impl Commit {
 
     pub fn print_recursive(&self, printer: &dyn Printer) {
         printer.print_commit(self);
-        if let Some(sha) = &self.parent {
-            let next = load_commit_from_sha(sha).unwrap();
-            next.print_recursive(printer);
+        if let Some(parent_shas) = &self.parent {
+            for sha in parent_shas {
+                let next = load_commit_from_sha(sha).unwrap();
+                next.print_recursive(printer);
+            }
         }
     }
 
@@ -161,21 +174,32 @@ impl Commit {
         heading.chars().map(|ch| ch as u8).collect()
     }
 
-    fn read_file_line<R: BufRead>(
-        reader: &mut R,
-        msg: &str,
-        total: &mut usize,
-    ) -> Result<(String, String), io::Error> {
-        let mut buf = vec![];
-        *total += reader.read_until('\n' as u8, &mut buf)?;
-        let string = iterable_to_string(&mut buf.iter());
-        let split = string.split_once(" ");
-        match split {
-            Some((start, rest)) => Ok((start.to_string(), rest.to_string())),
-            None => {
-                exit_with_message(msg);
+    fn read_file_line<R: BufRead>(reader: &mut R, total: &mut usize) -> Option<(String, String)> {
+        let msg = "Database is corrupt";
+        let mut buf = String::new();
+        *total += {
+            let this = reader.read_line(&mut buf);
+            match this {
+                Ok(t) => t,
+                Err(_e) => exit_with_message(msg),
             }
-        }
+        };
+        let split = buf.split_once(" ");
+        if let Some((start, rest)) = split {
+            return Some((start.to_string(), rest.to_string()));
+        };
+        None
+    }
+
+    fn read_messages<R: BufRead>(
+        reader: &mut R,
+        total: &mut usize,
+    ) -> Result<Vec<String>, io::Error> {
+        let mut buf = vec![];
+        *total += reader.read_to_end(&mut buf)?;
+        let full_string = iterable_to_string_no_truncate(&mut buf.iter());
+        let v = full_string.split("\n\n").map(|s| s.to_string()).collect();
+        Ok(v)
     }
 
     fn add_field(&mut self, field_name: String, data: String) {
@@ -189,7 +213,14 @@ impl Commit {
             "parent" => {
                 let sha = Sha::new_from_str(&data);
                 debug!("Setting parent to {}", sha);
-                self.parent = Some(sha);
+                if self.parent.is_some() {
+                    let opt = self.parent.clone();
+                    let mut v = opt.unwrap();
+                    v.push(sha);
+                    self.parent = Some(v);
+                } else {
+                    self.parent = Some(vec![sha]);
+                }
             }
             "author" | "committer" => {
                 let start_email_index = data.find('<').unwrap();
@@ -218,16 +249,20 @@ impl GitObject for Commit {
         let mut out = String::new();
         out.push_str("tree ");
         out.push_str(&self.tree_sha.to_string());
-        if let Some(p_sha) = &self.parent {
-            out.push_str("\nparent ");
-            out.push_str(&p_sha.to_string());
+        if let Some(parents) = &self.parent {
+            for parent in parents.iter() {
+                out.push_str("\nparent ");
+                out.push_str(&parent.to_string());
+            }
         }
         let author_string = format!("\nauthor {}", self.author.to_string_with_date());
         out.push_str(&author_string);
         let committer_string = format!("\ncommitter {}", self.committer.to_string_with_date());
         out.push_str(&committer_string);
-        out.push_str("\n");
-        out.push_str(&self.message);
+        for str in self.message.iter() {
+            let msg = format!("\n\n{}", str);
+            out.push_str(&msg);
+        }
         let mut heading = Commit::create_heading(out.len());
         let mut output = vec![];
         output.write(&mut heading)?;
@@ -249,12 +284,16 @@ impl GitObject for Commit {
 
     fn pretty_print(&self) {
         println!("tree {}", self.tree_sha);
-        if let Some(p) = &self.parent {
-            println!("parent {}", p);
+        if let Some(parents) = &self.parent {
+            for parent in parents.iter() {
+                println!("parent {}", parent);
+            }
         }
         println!("author {}", self.author.to_string_with_date());
         println!("committer {}", self.committer.to_string_with_date());
-        println!("\n{}", self.message);
+        for msg in self.message.iter() {
+            println!("{}", msg);
+        }
     }
 
     fn print_type(&self) {
