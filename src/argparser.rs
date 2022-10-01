@@ -1,4 +1,4 @@
-use crate::{commands::*, exit_with_message};
+use crate::{commands::*, exit_with_message, structures::Sha};
 use clap::{ArgGroup, Parser, Subcommand};
 use flexi_logger::{colored_detailed_format, Duplicate, Logger};
 use std::path::PathBuf;
@@ -10,6 +10,9 @@ fn halp_str() -> &'static str {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    Add {
+        pathspec: Vec<PathBuf>,
+    },
     #[clap(group(
         ArgGroup::new("mode")
             .required(true)
@@ -21,14 +24,18 @@ enum Command {
         /// show object's type
         #[clap(short = 't', group = "mode")]
         type_print: bool,
-        sha: String,
+        sha: Sha,
+    },
+    Commit {
+        #[clap(short = 'm')]
+        messages: Option<Vec<String>>,
     },
     CommitTree {
-        sha: String,
+        sha: Sha,
         #[clap(short = 'm')]
         message: Option<Vec<String>>,
         #[clap(short = 'p')]
-        parent: Option<Vec<String>>,
+        parent: Option<Vec<Sha>>,
     },
     HashObject {
         /// The file to hash
@@ -49,7 +56,7 @@ enum Command {
         stage: bool,
     },
     ReadTree {
-        sha: String,
+        sha: Sha,
     },
     UpdateIndex {
         /// If a specified file isn’t in the index already then it’s added. Default behaviour is to ignore new files.
@@ -64,7 +71,7 @@ enum Command {
     UpdateRef {
         #[clap(help = halp_str())]
         r#ref: String,
-        new_value: String,
+        new_value: Sha,
     },
     WriteTree {
         /// Normally flog write-tree ensures that the objects referenced by the directory exist in the object database. This option disables this check.
@@ -97,6 +104,9 @@ pub fn parse_args() -> Result<(), std::io::Error> {
         .start()
         .expect("Failed to start logger");
     match &args.command {
+        Command::Add { pathspec: files } => {
+            update_index_add(files)?;
+        }
         Command::CatFile {
             pretty,
             type_print,
@@ -108,6 +118,9 @@ pub fn parse_args() -> Result<(), std::io::Error> {
             if *type_print {
                 cat_file_print_type(sha)?;
             }
+        }
+        Command::Commit { messages } => {
+            commit(messages)?;
         }
         Command::CommitTree {
             sha,

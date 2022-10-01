@@ -51,9 +51,9 @@ pub fn check_file_is_of_kind(sha: &Sha, kind: &str) -> bool {
 
 pub fn read_from_disk(sha: Sha) -> Result<Box<dyn GitObject>, io::Error> {
     let mut buf = vec![];
-    let path = Path::new("/home/samuwen/Documents/repos/multi_merge/.git/objects/63/12c14f195ad8be7dfe2fd682c9b6b6bc71c9a3");
+    // let path = Path::new("/home/samuwen/Documents/repos/multi_merge/.git/objects/63/12c14f195ad8be7dfe2fd682c9b6b6bc71c9a3");
     // let path = Path::new("/home/samuwen/Documents/repos/re_flog/.re_flogged/objects/24/e0ed76e64a48945bd93a1d2cf00ba9c6294a8c");
-    // let path = sha.to_path();
+    let path = sha.to_path();
     debug!("Path: {:?}", path);
     let mut reader = init_bufreader(&path)?;
     reader.read_until(0, &mut buf)?;
@@ -154,7 +154,7 @@ mod tests {
             .format(colored_detailed_format)
             .start()
             .expect("Failed to start logger");
-        let sha = Sha::new_from_str("6312c14f195ad8be7dfe2fd682c9b6b6bc71c9a3");
+        let sha = "6312c14f195ad8be7dfe2fd682c9b6b6bc71c9a3".parse().unwrap();
         read_from_disk(sha);
     }
 }

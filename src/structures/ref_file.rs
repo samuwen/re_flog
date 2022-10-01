@@ -4,27 +4,27 @@ use std::{
     path::Path,
 };
 
+use derive_getters::Getters;
 use log::{debug, info};
 
 use crate::exit_with_message;
 
 use super::{check_file_is_of_kind, load_commit_from_sha, Printer, Sha};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Getters)]
 pub struct RefFile {
     sha: Sha,
     name: String,
 }
 
 impl RefFile {
-    pub fn new(reff: &String, new_value: &String) -> Self {
-        let sha = Sha::new_from_str(new_value);
-        if !check_file_is_of_kind(&sha, "commit") {
+    pub fn new(reff: &String, new_value: &Sha) -> Self {
+        if !check_file_is_of_kind(new_value, "commit") {
             let message = format!("fatal: update_ref failed for ref '{}': cannot update ref '{}': trying to write non-commit object {} to branch '{}'", reff, reff, new_value, reff);
             exit_with_message(&message);
         }
         Self {
-            sha,
+            sha: new_value.clone(),
             name: reff.clone(),
         }
     }
@@ -37,7 +37,7 @@ impl RefFile {
         let mut reader = BufReader::new(file);
         let mut buf = String::new();
         reader.read_line(&mut buf)?;
-        let sha = Sha::new_from_str(&buf.trim());
+        let sha = buf.trim().parse().unwrap();
         Ok(Self {
             name: branch.to_owned(),
             sha,

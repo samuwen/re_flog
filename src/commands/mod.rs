@@ -1,4 +1,5 @@
 pub mod cat_file;
+pub mod commit;
 pub mod commit_tree;
 pub mod gitlog;
 pub mod hash_object;
@@ -10,6 +11,7 @@ pub mod update_ref;
 pub mod write_tree;
 
 pub use cat_file::*;
+pub use commit::*;
 pub use commit_tree::*;
 pub use gitlog::*;
 pub use hash_object::*;

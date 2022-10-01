@@ -85,9 +85,9 @@ impl Commit {
     }
 
     pub fn new_from_tree_sha(
-        tree_sha: Sha,
+        tree_sha: &Sha,
         message: &Option<Vec<String>>,
-        parent: &Option<Vec<String>>,
+        parent: &Option<Vec<Sha>>,
     ) -> Result<Self, io::Error> {
         let message = match message {
             Some(msg) => msg.clone(),
@@ -112,13 +112,10 @@ impl Commit {
             committer,
             parent: None,
             sha: Sha::empty(),
-            tree_sha,
+            tree_sha: tree_sha.clone(),
         };
         if let Some(parents) = parent {
-            me.parent = parents
-                .iter()
-                .map(|parent| Some(Sha::new_from_str(parent)))
-                .collect();
+            me.parent = Some(parents.clone());
         };
         me.hash()?;
         me.pretty_print();
@@ -206,12 +203,12 @@ impl Commit {
         let data = data.trim().to_string();
         match field_name.as_str() {
             "tree" => {
-                let sha = Sha::new_from_str(&data);
+                let sha = data.parse().unwrap();
                 debug!("Setting tree_sha to {}", sha);
                 self.tree_sha = sha;
             }
             "parent" => {
-                let sha = Sha::new_from_str(&data);
+                let sha = data.parse().unwrap();
                 debug!("Setting parent to {}", sha);
                 if self.parent.is_some() {
                     let opt = self.parent.clone();

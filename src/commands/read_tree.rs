@@ -1,5 +1,7 @@
 use std::io;
 
-pub fn read_tree(_sha: &String) -> Result<(), io::Error> {
+use crate::structures::Sha;
+
+pub fn read_tree(_sha: &Sha) -> Result<(), io::Error> {
     todo!();
 }

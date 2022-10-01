@@ -412,6 +412,10 @@ impl IndexFile {
         Ok(())
     }
 
+    pub fn clear_all_entries(&mut self) {
+        self.index_entries = vec![];
+    }
+
     pub fn write(&self) -> Result<(), io::Error> {
         let mut out = vec![];
         self.header.write(&mut out)?;

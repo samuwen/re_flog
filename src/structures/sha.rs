@@ -2,6 +2,8 @@ use std::{
     fmt,
     fs::read_dir,
     path::{Path, PathBuf},
+    str::FromStr,
+    string::ParseError,
 };
 
 use sha1::{Digest, Sha1};
@@ -26,7 +28,7 @@ impl Sha {
             first_part.to_str().unwrap(),
             last_part.to_str().unwrap()
         );
-        Sha::new_from_str(&whole)
+        whole.parse().unwrap()
     }
 
     pub fn new_hash(bytes: impl AsRef<[u8]>) -> Self {
@@ -38,38 +40,6 @@ impl Sha {
 
     pub fn empty() -> Self {
         Self { bytes: [0; 20] }
-    }
-
-    pub fn new_from_str(s: &str) -> Self {
-        if s.len() < 4 {
-            let msg = format!(
-                "fatal: ambiguous argument '{}': unknown revision or path not in the working tree.",
-                s
-            );
-            exit_with_message(&msg);
-        }
-        let mut full_str = s.to_string();
-        if s.len() < 20 {
-            let mut string = s.to_string();
-            let first_two_chars: String = string.drain(..2).collect();
-            let path_string = format!(".re_flogged/objects/{}", first_two_chars);
-            let path = Path::new(&path_string);
-            if path.exists() {
-                for dir_entry in read_dir(path) {
-                    for entry in dir_entry {
-                        let entry = entry.unwrap();
-                        let file_name = entry.file_name().into_string().unwrap();
-                        if file_name.contains(&string) {
-                            let full = format!("{}{}", first_two_chars, file_name);
-                            full_str = full;
-                        }
-                    }
-                }
-            }
-        }
-        let mut out = [0; 20];
-        hex::decode_to_slice(full_str, &mut out).expect("Failed to decode hex");
-        Self { bytes: out }
     }
 
     pub fn to_string(&self) -> String {
@@ -106,5 +76,41 @@ impl fmt::Debug for Sha {
         f.debug_struct("Sha")
             .field("bytes", &self.to_string())
             .finish()
+    }
+}
+
+impl FromStr for Sha {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() < 4 {
+            let msg = format!(
+                "fatal: ambiguous argument '{}': unknown revision or path not in the working tree.",
+                s
+            );
+            exit_with_message(&msg);
+        }
+        let mut full_str = s.to_string();
+        if s.len() < 20 {
+            let mut string = s.to_string();
+            let first_two_chars: String = string.drain(..2).collect();
+            let path_string = format!(".re_flogged/objects/{}", first_two_chars);
+            let path = Path::new(&path_string);
+            if path.exists() {
+                for dir_entry in read_dir(path) {
+                    for entry in dir_entry {
+                        let entry = entry.unwrap();
+                        let file_name = entry.file_name().into_string().unwrap();
+                        if file_name.contains(&string) {
+                            let full = format!("{}{}", first_two_chars, file_name);
+                            full_str = full;
+                        }
+                    }
+                }
+            }
+        }
+        let mut out = [0; 20];
+        hex::decode_to_slice(full_str, &mut out).expect("Failed to decode hex");
+        Ok(Self { bytes: out })
     }
 }
