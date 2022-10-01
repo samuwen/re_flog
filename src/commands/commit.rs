@@ -13,19 +13,17 @@ pub fn commit(messages: &Option<Vec<String>>) -> Result<(), io::Error> {
     let mut index_file = IndexFile::from_disk().expect("failed to create index file");
 
     let sha = write_tree(false).expect("Failed to write tree");
-    match RefFile::new_from_branch(&current_branch) {
+    let new_commit = match RefFile::new_from_branch(&current_branch) {
         Ok(ref_file) => {
             if let Ok(head) = load_commit_from_sha(ref_file.sha()) {
-                commit_tree(&sha, messages, head.parent()).expect("Failed to commit tree");
+                commit_tree(&sha, messages, head.parent()).expect("Failed to commit tree")
             } else {
                 panic!("idk");
             }
         }
-        Err(_) => {
-            commit_tree(&sha, messages, &None).expect("failed to commit tree");
-        }
-    }
-    update_ref_basic(&current_branch, &sha).expect("Failed to update ref");
+        Err(_) => commit_tree(&sha, messages, &None).expect("failed to commit tree"),
+    };
+    update_ref_basic(&current_branch, new_commit.get_sha()).expect("Failed to update ref");
     index_file.clear_all_entries();
     Ok(())
 }

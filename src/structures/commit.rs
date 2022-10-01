@@ -86,10 +86,11 @@ impl Commit {
 
     pub fn new_from_tree_sha(
         tree_sha: &Sha,
-        message: &Option<Vec<String>>,
+        messages: &Option<Vec<String>>,
         parent: &Option<Vec<Sha>>,
     ) -> Result<Self, io::Error> {
-        let message = match message {
+        info!("New commit from tree sha");
+        let messages = match messages {
             Some(msg) => msg.clone(),
             None => {
                 let mut message = String::new();
@@ -98,7 +99,7 @@ impl Commit {
                 vec![message]
             }
         };
-        debug!("{:?}", message);
+        debug!("{:?}", messages);
         let dt = Local::now();
         let author = Author::new(
             String::from("Mark Chaitin"),
@@ -107,7 +108,7 @@ impl Commit {
         );
         let committer = author.clone();
         let mut me = Self {
-            message,
+            message: messages,
             author,
             committer,
             parent: None,
@@ -164,6 +165,10 @@ impl Commit {
                 next.print_recursive(printer);
             }
         }
+    }
+
+    pub fn get_sha(&self) -> &Sha {
+        &self.sha
     }
 
     fn create_heading(size: usize) -> Vec<u8> {
@@ -307,8 +312,6 @@ mod tests {
     use std::fs::File;
 
     use crate::structures::decompress;
-
-    use super::*;
 
     #[test]
     fn strap() {

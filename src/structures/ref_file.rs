@@ -19,6 +19,7 @@ pub struct RefFile {
 
 impl RefFile {
     pub fn new(reff: &String, new_value: &Sha) -> Self {
+        info!("New ref file from sha: {}", new_value);
         if !check_file_is_of_kind(new_value, "commit") {
             let message = format!("fatal: update_ref failed for ref '{}': cannot update ref '{}': trying to write non-commit object {} to branch '{}'", reff, reff, new_value, reff);
             exit_with_message(&message);
