@@ -24,6 +24,7 @@ pub fn init<P: AsRef<OsStr>>(root_path: P) -> Result<(), io::Error> {
     let write_root_file = |name: &str, content: &str| -> Result<(), io::Error> {
         let mut file = File::create(Path::join(&path, name))?;
         file.write(content.as_bytes())?;
+        println!("Wrote {}", name);
         Ok(())
     };
     write_root_file("HEAD", "ref: refs/heads/main\n")?;

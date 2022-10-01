@@ -5,7 +5,7 @@ use std::{
 };
 
 use derive_getters::Getters;
-use log::{debug, info};
+use log::*;
 
 use crate::exit_with_message;
 
@@ -34,7 +34,7 @@ impl RefFile {
         let branch = branch.trim();
         info!("New ref file from branch: {}", branch);
         let path = Path::join(Path::new(".re_flogged"), Path::new(branch));
-        let file = File::open(path)?;
+        let file = File::open(&path)?;
         let mut reader = BufReader::new(file);
         let mut buf = String::new();
         reader.read_line(&mut buf)?;
@@ -46,7 +46,7 @@ impl RefFile {
     }
 
     pub fn write(&self) -> Result<(), io::Error> {
-        let path = Path::join(Path::new(".re_flogged"), Path::new(&self.name));
+        let path = Path::join(Path::new(".re_flogged"), Path::new(&self.name.trim()));
         debug!("Writing new ref to: {}", path.display());
         let mut file = File::create(path)?;
         file.write(self.sha.to_string().as_bytes())?;
