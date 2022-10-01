@@ -10,13 +10,13 @@ fn halp_str() -> &'static str {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Add {
-        pathspec: Vec<PathBuf>,
-    },
+    /// Add file contents to the index
+    Add { pathspec: Vec<PathBuf> },
     #[clap(group(
         ArgGroup::new("mode")
             .required(true)
     ))]
+    /// Provide content or type and size information for repository objects
     CatFile {
         /// pretty prints object's content
         #[clap(short = 'p', group = "mode")]
@@ -26,10 +26,12 @@ enum Command {
         type_print: bool,
         sha: Sha,
     },
+    /// Record changes to the repository
     Commit {
         #[clap(short = 'm')]
         messages: Option<Vec<String>>,
     },
+    /// Create a new commit object
     CommitTree {
         sha: Sha,
         #[clap(short = 'm')]
@@ -37,6 +39,7 @@ enum Command {
         #[clap(short = 'p')]
         parent: Option<Vec<Sha>>,
     },
+    /// Compute object ID and optionally creates a blob from a file
     HashObject {
         /// The file to hash
         file: String,
@@ -44,20 +47,21 @@ enum Command {
         #[clap(short = 'w')]
         write: bool,
     },
-    Init {
-        destination: Option<String>,
-    },
+    /// Initializes this directory as a re_Flog (git) directory
+    Init { destination: Option<String> },
+    /// Shows the commit logs
     Log {
         #[clap(arg_enum, long = "pretty")]
         pretty: Option<LogFormat>,
     },
+    /// Show information about files in the index and the working tree
     LsFiles {
         #[clap(long)]
         stage: bool,
     },
-    ReadTree {
-        sha: Sha,
-    },
+    /// Reads tree information into the index
+    ReadTree { sha: Sha },
+    /// Register file contents in the working tree to the index
     UpdateIndex {
         /// If a specified file isn’t in the index already then it’s added. Default behaviour is to ignore new files.
         #[clap(long)]
@@ -67,12 +71,13 @@ enum Command {
         remove: bool,
         files: Vec<PathBuf>,
     },
-    /// Updates some refs
+    /// Update the object name stored in a ref safely
     UpdateRef {
         #[clap(help = halp_str())]
         r#ref: String,
         new_value: Sha,
     },
+    /// Create a tree object from the current index
     WriteTree {
         /// Normally flog write-tree ensures that the objects referenced by the directory exist in the object database. This option disables this check.
         #[clap(long = "missing-ok")]
